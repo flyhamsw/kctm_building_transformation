@@ -1,13 +1,6 @@
 import numpy as np
 import numpy.linalg as la
 
-shift_distance = {
-    'x': 199592.0,
-    'y': 552207.0,
-    'z': 50.0,
-    'scale': 100000
-}
-
 
 def solve_ls(A, y):
     N = np.dot(np.transpose(A), A)
@@ -96,21 +89,21 @@ def convert_from_world_to_building(x_building, y_building, z_building, x_world, 
         np.array([x_world, y_world, z_world], ndmin=2)
     )
     building_estimation = np.dot(R_hat, world) + T_hat
-    estimated_x = building_estimation[0][0]
-    estimated_y = building_estimation[1][0]
-    estimated_z = building_estimation[2][0]
-    rmse_x = estimated_x - x_building
-    rmse_y = estimated_y - y_building
-    rmse_z = estimated_z - z_building
+    converted_x = building_estimation[0][0]
+    converted_y = building_estimation[1][0]
+    converted_z = building_estimation[2][0]
+    rmse_x = converted_x - x_building
+    rmse_y = converted_y - y_building
+    rmse_z = converted_z - z_building
     rmse = la.norm(
         np.sqrt(np.power(np.array([rmse_x, rmse_y, rmse_z]), 2))
     )
-    print('estimated x: %f, difference: %f' % (estimated_x, rmse_x))
-    print('estimated y: %f, difference: %f' % (estimated_y, rmse_y))
-    print('estimated z: %f, difference: %f' % (estimated_z, rmse_z))
+    print('converted x: %f, difference: %f' % (converted_x, rmse_x))
+    print('converted y: %f, difference: %f' % (converted_y, rmse_y))
+    print('converted z: %f, difference: %f' % (converted_z, rmse_z))
     print('RMSE: %f'% rmse)
     print()
-    return rmse, estimated_x, estimated_y, estimated_z
+    return rmse, converted_x, converted_y, converted_z
 
 
 world_building_pairs = [
@@ -172,7 +165,7 @@ world_building_pairs = [
         'x_building': 1.88,
         'y_building': 2.76,
         'z_building': 0,
-        'control': True
+        'control': False
     },
     {
         'name': 'building_07',
@@ -199,7 +192,7 @@ print(T_hat)
 print()
 
 for pair in world_building_pairs:
-    print(pair['name'])
+    print('Name: %s, Control: %s' % (pair['name'], pair['control']))
     convert_from_world_to_building(
         pair['x_building'],
         pair['y_building'],
@@ -208,3 +201,7 @@ for pair in world_building_pairs:
         pair['y_world'],
         pair['z_world']
     )
+
+convert_from_world_to_building(0, 0, 0, 199592.938, 552206.707, 54.190)
+convert_from_world_to_building(0, 0, 0, 199591.751, 552206.798, 53.906)
+convert_from_world_to_building(0, 0, 0, 199591.882, 552206.817, 56.596)
