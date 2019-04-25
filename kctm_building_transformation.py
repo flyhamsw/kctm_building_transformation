@@ -77,9 +77,10 @@ def make_A(world_building_pairs):
 def make_y(world_building_pairs):
     y = []
     for pair in world_building_pairs:
-        y.append(pair['x_building'])
-        y.append(pair['y_building'])
-        y.append(pair['z_building'])
+        if pair['control']:
+            y.append(pair['x_building'])
+            y.append(pair['y_building'])
+            y.append(pair['z_building'])
     return np.transpose(np.array(y, dtype=float, ndmin=2))
 
 
@@ -88,6 +89,28 @@ def rearrange_xsi_hat(xsi_hat):
     T_hat = xsi_hat[9:12] + np.transpose(np.array([shift_distance['x'], shift_distance['y'], shift_distance['z']], ndmin=2))
     R_hat = np.reshape(r_elements, (3, 3))
     return R_hat, T_hat
+
+
+def convert_from_building_to_world(x_building, y_building, z_building, x_world, y_world, z_world):
+    world = np.transpose(
+        np.array([x_building, y_building, z_building], ndmin=2)
+    )
+    world_estimation = np.dot(R_hat, world) + T_hat
+    estimated_x = world_estimation[0][0]
+    estimated_y = world_estimation[1][0]
+    estimated_z = world_estimation[2][0]
+    rmse_x = estimated_x - x_world
+    rmse_y = estimated_y - y_world
+    rmse_z = estimated_z - z_world
+    rmse = la.norm(
+        np.sqrt(np.power(np.array([rmse_x, rmse_y, rmse_z]), 2))
+    )
+    print('estimated x: %f, difference: %f' % (estimated_x, rmse_x))
+    print('estimated y: %f, difference: %f' % (estimated_y, rmse_y))
+    print('estimated z: %f, difference: %f' % (estimated_z, rmse_z))
+    print('RMSE: %f'% rmse)
+    print()
+    return rmse, estimated_x, estimated_y, estimated_z
 
 
 world_building_pairs = [
@@ -133,7 +156,7 @@ world_building_pairs = [
     },
     {
         'name': 'building_05',
-        'x_world': 119592.34,
+        'x_world': 199592.34,
         'y_world': 552209.13,
         'z_world': 52.17,
         'x_building': 1.22,
@@ -143,7 +166,7 @@ world_building_pairs = [
     },
     {
         'name': 'building_06',
-        'x_world': 119592.28,
+        'x_world': 199592.28,
         'y_world': 552209.79,
         'z_world': 53.82,
         'x_building': 1.88,
@@ -153,13 +176,13 @@ world_building_pairs = [
     },
     {
         'name': 'building_07',
-        'x_world': 119592.43,
+        'x_world': 199592.43,
         'y_world': 552208.52,
         'z_world': 53.43,
         'x_building': 0.62,
         'y_building': 2.38,
         'z_building': 0,
-        'control': True
+        'control': False
     }
 ]
 
@@ -169,25 +192,19 @@ y = make_y(world_building_pairs)
 xsi_hat = solve_ls(A, y)
 R_hat, T_hat = rearrange_xsi_hat(xsi_hat)
 
-
-def convert_from_building_to_world(x_building, y_building, z_building, x_world, y_world, z_world):
-    world = np.transpose(
-        np.array(
-            [
-                x_building,
-                y_building,
-                z_building
-            ],
-            ndmin=2
-        )
-    )
-    world_estimation = np.dot(R_hat, world) + T_hat
-    print('estimated x: %f, difference: %f' % (world_estimation[0][0], world_estimation[0][0] - x_world))
-    print('estimated y: %f, difference: %f' % (world_estimation[1][0], world_estimation[1][0] - y_world))
-    print('estimated z: %f, difference: %f' % (world_estimation[2][0], world_estimation[2][0] - z_world))
-    print()
-
+print('Rotation matrix:')
+print(R_hat)
+print('Translation matrix:')
+print(T_hat)
+print()
 
 for pair in world_building_pairs:
-    convert_from_building_to_world(pair['x_building'], pair['y_building'], pair['z_building'],
-                                   pair['x_world'], pair['y_world'], pair['z_world'])
+    if not pair['control']:
+        convert_from_building_to_world(
+            pair['x_building'],
+            pair['y_building'],
+            pair['z_building'],
+            pair['x_world'],
+            pair['y_world'],
+            pair['z_world']
+        )
