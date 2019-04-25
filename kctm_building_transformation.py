@@ -22,9 +22,9 @@ def make_A(world_building_pairs):
         if pair['control']:
             row_1 = np.array(
                 [
-                    (pair['x_world'] - shift_distance['x']),  # r11
-                    (pair['y_world'] - shift_distance['y']),  # r12
-                    (pair['z_world'] - shift_distance['z']),  # r13
+                    pair['x_world'],  # r11
+                    pair['y_world'],  # r12
+                    pair['z_world'],  # r13
                     0,  # r21
                     0,  # r22
                     0,  # r23
@@ -41,9 +41,9 @@ def make_A(world_building_pairs):
                     0,  # r11
                     0,  # r12
                     0,  # r13
-                    (pair['x_world'] - shift_distance['x']),  # r21
-                    (pair['y_world'] - shift_distance['y']),  # r22
-                    (pair['z_world'] - shift_distance['z']),  # r23
+                    pair['x_world'],  # r21
+                    pair['y_world'],  # r22
+                    pair['z_world'],  # r23
                     0,  # r31
                     0,  # r32
                     0,  # r33
@@ -60,9 +60,9 @@ def make_A(world_building_pairs):
                     0,  # r21
                     0,  # r22
                     0,  # r23
-                    (pair['x_world'] - shift_distance['x']),  # r31
-                    (pair['y_world'] - shift_distance['y']),  # r32
-                    (pair['z_world'] - shift_distance['z']),  # r33
+                    pair['x_world'],  # r31
+                    pair['y_world'],  # r32
+                    pair['z_world'],  # r33
                     0,  # tx
                     0,  # ty
                     1  # tz
@@ -86,22 +86,22 @@ def make_y(world_building_pairs):
 
 def rearrange_xsi_hat(xsi_hat):
     r_elements = xsi_hat[0:9]
-    T_hat = xsi_hat[9:12] + np.transpose(np.array([shift_distance['x'], shift_distance['y'], shift_distance['z']], ndmin=2))
+    T_hat = xsi_hat[9:12]
     R_hat = np.reshape(r_elements, (3, 3))
     return R_hat, T_hat
 
 
-def convert_from_building_to_world(x_building, y_building, z_building, x_world, y_world, z_world):
+def convert_from_world_to_building(x_building, y_building, z_building, x_world, y_world, z_world):
     world = np.transpose(
-        np.array([x_building, y_building, z_building], ndmin=2)
+        np.array([x_world, y_world, z_world], ndmin=2)
     )
-    world_estimation = np.dot(R_hat, world) + T_hat
-    estimated_x = world_estimation[0][0]
-    estimated_y = world_estimation[1][0]
-    estimated_z = world_estimation[2][0]
-    rmse_x = estimated_x - x_world
-    rmse_y = estimated_y - y_world
-    rmse_z = estimated_z - z_world
+    building_estimation = np.dot(R_hat, world) + T_hat
+    estimated_x = building_estimation[0][0]
+    estimated_y = building_estimation[1][0]
+    estimated_z = building_estimation[2][0]
+    rmse_x = estimated_x - x_building
+    rmse_y = estimated_y - y_building
+    rmse_z = estimated_z - z_building
     rmse = la.norm(
         np.sqrt(np.power(np.array([rmse_x, rmse_y, rmse_z]), 2))
     )
@@ -115,22 +115,22 @@ def convert_from_building_to_world(x_building, y_building, z_building, x_world, 
 
 world_building_pairs = [
     {
-        'name': 'building_02',
-        'x_world': 199592.49,
-        'y_world': 552207.90,
-        'z_world': 54.14,
-        'x_building': 0,
-        'y_building': 3.08,
-        'z_building': 0,
-        'control': True
-    },
-    {
         'name': 'building_01',
         'x_world': 199592.50,
         'y_world': 552207.92,
         'z_world': 51.06,
         'x_building': 0,
         'y_building': 0,
+        'z_building': 0,
+        'control': True
+    },
+    {
+        'name': 'building_02',
+        'x_world': 199592.49,
+        'y_world': 552207.90,
+        'z_world': 54.14,
+        'x_building': 0,
+        'y_building': 3.08,
         'z_building': 0,
         'control': True
     },
@@ -199,12 +199,12 @@ print(T_hat)
 print()
 
 for pair in world_building_pairs:
-    if not pair['control']:
-        convert_from_building_to_world(
-            pair['x_building'],
-            pair['y_building'],
-            pair['z_building'],
-            pair['x_world'],
-            pair['y_world'],
-            pair['z_world']
-        )
+    print(pair['name'])
+    convert_from_world_to_building(
+        pair['x_building'],
+        pair['y_building'],
+        pair['z_building'],
+        pair['x_world'],
+        pair['y_world'],
+        pair['z_world']
+    )
