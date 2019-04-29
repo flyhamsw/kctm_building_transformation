@@ -1,207 +1,113 @@
 import numpy as np
 import numpy.linalg as la
+import csv
 
 
-def solve_ls(A, y):
-    N = np.dot(np.transpose(A), A)
-    P = np.dot(np.transpose(A), y)
-    xsi_hat = np.dot(la.inv(N), P)
-    return xsi_hat
-
-
-def make_A(world_building_pairs):
-    A = []
-    for pair in world_building_pairs:
-        if pair['control']:
-            row_1 = np.array(
-                [
-                    pair['x_world'],  # r11
-                    pair['y_world'],  # r12
-                    pair['z_world'],  # r13
-                    0,  # r21
-                    0,  # r22
-                    0,  # r23
-                    0,  # r31
-                    0,  # r32
-                    0,  # r33
-                    1,  # tx
-                    0,  # ty
-                    0  # tz
-                ], dtype=float
-            )
-            row_2 = np.array(
-                [
-                    0,  # r11
-                    0,  # r12
-                    0,  # r13
-                    pair['x_world'],  # r21
-                    pair['y_world'],  # r22
-                    pair['z_world'],  # r23
-                    0,  # r31
-                    0,  # r32
-                    0,  # r33
-                    0,  # tx
-                    1,  # ty
-                    0  # tz
-                ], dtype=float
-            )
-            row_3 = np.array(
-                [
-                    0,  # r11
-                    0,  # r12
-                    0,  # r13
-                    0,  # r21
-                    0,  # r22
-                    0,  # r23
-                    pair['x_world'],  # r31
-                    pair['y_world'],  # r32
-                    pair['z_world'],  # r33
-                    0,  # tx
-                    0,  # ty
-                    1  # tz
-                ], dtype=float
-            )
-            A.append(row_1)
-            A.append(row_2)
-            A.append(row_3)
-    return np.array(A, dtype=float)
-
-
-def make_y(world_building_pairs):
-    y = []
-    for pair in world_building_pairs:
-        if pair['control']:
-            y.append(pair['x_building'])
-            y.append(pair['y_building'])
-            y.append(pair['z_building'])
-    return np.transpose(np.array(y, dtype=float, ndmin=2))
-
-
-def rearrange_xsi_hat(xsi_hat):
-    r_elements = xsi_hat[0:9]
-    T_hat = xsi_hat[9:12]
-    R_hat = np.reshape(r_elements, (3, 3))
-    return R_hat, T_hat
-
-
-def convert_from_world_to_building(x_building, y_building, z_building, x_world, y_world, z_world):
-    world = np.transpose(
-        np.array([x_world, y_world, z_world], ndmin=2)
-    )
-    building_estimation = np.dot(R_hat, world) + T_hat
-    converted_x = building_estimation[0][0]
-    converted_y = building_estimation[1][0]
-    converted_z = building_estimation[2][0]
-    rmse_x = converted_x - x_building
-    rmse_y = converted_y - y_building
-    rmse_z = converted_z - z_building
-    rmse = la.norm(
-        np.sqrt(np.power(np.array([rmse_x, rmse_y, rmse_z]), 2))
-    )
-    print('converted x: %f, difference: %f' % (converted_x, rmse_x))
-    print('converted y: %f, difference: %f' % (converted_y, rmse_y))
-    print('converted z: %f, difference: %f' % (converted_z, rmse_z))
-    print('RMSE: %f'% rmse)
-    print()
-    return rmse, converted_x, converted_y, converted_z
-
-
-world_building_pairs = [
-    {
-        'name': 'building_01',
-        'x_world': 199592.50,
-        'y_world': 552207.92,
-        'z_world': 51.06,
-        'x_building': 0,
-        'y_building': 0,
-        'z_building': 0,
-        'control': True
-    },
-    {
-        'name': 'building_02',
-        'x_world': 199592.49,
-        'y_world': 552207.90,
-        'z_world': 54.14,
-        'x_building': 0,
-        'y_building': 3.08,
-        'z_building': 0,
-        'control': True
-    },
-    {
-        'name': 'building_03',
-        'x_world': 199592.18,
-        'y_world': 552210.61,
-        'z_world': 54.14,
-        'x_building': 2.73,
-        'y_building': 3.08,
-        'z_building': 0,
-        'control': True
-    },
-    {
-        'name': 'building_04',
-        'x_world': 199592.23,
-        'y_world': 552210.63,
-        'z_world': 51.08,
-        'x_building': 0,
-        'y_building': 2.73,
-        'z_building': 0,
-        'control': True
-    },
-    {
-        'name': 'building_05',
-        'x_world': 199592.34,
-        'y_world': 552209.13,
-        'z_world': 52.17,
-        'x_building': 1.22,
-        'y_building': 1.11,
-        'z_building': 0,
-        'control': True
-    },
-    {
-        'name': 'building_06',
-        'x_world': 199592.28,
-        'y_world': 552209.79,
-        'z_world': 53.82,
-        'x_building': 1.88,
-        'y_building': 2.76,
-        'z_building': 0,
-        'control': False
-    },
-    {
-        'name': 'building_07',
-        'x_world': 199592.43,
-        'y_world': 552208.52,
-        'z_world': 53.43,
-        'x_building': 0.62,
-        'y_building': 2.38,
-        'z_building': 0,
-        'control': False
+def import_data(path, apply_global_shift=True):
+    data = []
+    global_shift = {
+        'x': 0.0,
+        'y': 0.0,
+        'z': 0.0
     }
-]
+    with open(path, 'r') as f:
+        reader = csv.reader(f, delimiter=' ')
+        for idx, row in enumerate(reader):
+            if idx == 0 and apply_global_shift:
+                global_shift['x'] = float(row[2])
+                global_shift['y'] = float(row[1])
+                global_shift['z'] = float(row[3])
+            if apply_global_shift:
+                data.append(np.array([float(row[2]) - global_shift['x'], float(row[1]) - global_shift['y'],
+                                      float(row[3]) - global_shift['z']]))
+            else:
+                data.append(np.array([float(row[2]), float(row[1]), float(row[3])]))
+    data = np.array(data)
+    return data, global_shift
 
 
-A = make_A(world_building_pairs)
-y = make_y(world_building_pairs)
-xsi_hat = solve_ls(A, y)
-R_hat, T_hat = rearrange_xsi_hat(xsi_hat)
+def fit_plane(data):
+    A = np.array([data[:, 1], data[:, 2], np.ones(data[:, 0].shape)]).T
+    y = np.array(data[:, 0], ndmin=2).T
+    xsi_hat = np.dot(la.inv(np.dot(A.T, A)), np.dot(A.T, y))
+    normal = np.array([1, - xsi_hat[0][0], - xsi_hat[1][0]])
+    normal = normal / la.norm(normal)
+    return normal
 
-print('Rotation matrix:')
-print(R_hat)
-print('Translation matrix:')
-print(T_hat)
-print()
 
-for pair in world_building_pairs:
-    print('Name: %s, Control: %s' % (pair['name'], pair['control']))
-    convert_from_world_to_building(
-        pair['x_building'],
-        pair['y_building'],
-        pair['z_building'],
-        pair['x_world'],
-        pair['y_world'],
-        pair['z_world']
+def compute_translate_and_rotate_xy(normal, global_shift):
+    T = np.identity(4)
+    T[0][3] = - global_shift['x']
+    T[1][3] = - global_shift['y']
+    T[2][3] = - global_shift['z']
+
+    a = normal[0]
+    b = normal[1]
+    c = normal[2]
+
+    d = la.norm([b, c])
+    Rx = np.array(
+        [
+            [1, 0, 0, 0],
+            [0, c / d, -b / d, 0],
+            [0, b / d, c / d, 0],
+            [0, 0, 0, 1]
+        ]
+    )
+    Ry = np.array(
+        [
+            [d, 0, -a, 0],
+            [0, 1, 0, 0,],
+            [a, 0, d, 0],
+            [0, 0, 0, 1]
+
+        ]
     )
 
-convert_from_world_to_building(0, 0, 0, 199592.938, 552206.707, 54.190)
-convert_from_world_to_building(0, 0, 0, 199591.751, 552206.798, 53.906)
-convert_from_world_to_building(0, 0, 0, 199591.882, 552206.817, 56.596)
+    transformation_matrix = la.multi_dot([Ry, Rx, T])
+    return transformation_matrix
+
+
+def rotate_z(transformed_data, transformation_matrix_yxt):
+    p1 = transformed_data.T[0]
+    p2 = transformed_data.T[1]
+    dp = p2 - p1
+
+    theta = np.arccos(dp[0] / la.norm(dp[0:2]))
+    Rz = np.array(
+        [
+            [np.cos(theta), -np.sin(theta), 0, 0],
+            [np.sin(theta), np.cos(theta), 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]
+        ]
+    )
+
+    transformation_matrix_zyxt = np.dot(Rz, transformation_matrix_yxt)
+    return transformation_matrix_zyxt
+
+
+if __name__ == '__main__':
+    # 주어진 점을 가장 잘 포함하는 평면의 방정식 만들기 (plane fitting)
+    data, global_shift = import_data('data/sewoon_east.txt')
+    normal = fit_plane(data)
+    transformation_matrix_yxt = compute_translate_and_rotate_xy(normal, global_shift)
+
+    # 첫 번째 점을 원점으로 하고 (0, 0, 1)을 법선벡터로 하는 평면으로 좌표변환하기
+    data, _ = import_data('data/sewoon_east.txt', False)
+    data_homogeneous = np.concatenate([data, np.ones((data.shape[0], 1))], 1).T
+    transformed_data = np.dot(transformation_matrix_yxt, data_homogeneous)
+
+    # Z 방향 회전시키기
+    transformation_matrix_zyxt = rotate_z(transformed_data, transformation_matrix_yxt)
+    transformed_data = np.dot(transformation_matrix_zyxt, data_homogeneous)
+
+    # 구한 회전행렬 저장하기
+    with open('data/sewoon_east_transform_mat.txt', 'w') as f:
+        for row in transformation_matrix_zyxt:
+            f.write('%f %f %f %f\n' % (row[0], row[1], row[2], row[3]))
+
+    # 입력한 점 좌표변환 및 저장하기
+    with open('data/sewoon_east_transformed.txt', 'w') as f:
+        for idx, row in enumerate(transformed_data.T):
+            f.write('%d %f %f %f\n' % (idx, row[0], row[1], row[2]))
