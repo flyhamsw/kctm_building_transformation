@@ -11,7 +11,7 @@ def import_data(path, global_shift, apply_global_shift=True):
         reader = csv.reader(f, delimiter=' ')
         for idx, row in enumerate(reader):
             if apply_global_shift:
-                data.append(np.array([float(row[2]) - global_shift['x'], float(row[1]) - global_shift['y'],
+                data.append(np.array([float(row[2]) - global_shift['x'], float(row[1]) - global_shift['y'],  # Donhwamun-ro: 1, 2   Sewoon: 2, 1
                                       float(row[3]) - global_shift['z']]))
             else:
                 data.append(np.array([float(row[2]), float(row[1]), float(row[3])]))
@@ -36,11 +36,19 @@ def compute_transformation(input_path, output_path, output_mat_path, global_shif
     n = fit_plane(data)
     # transformation_matrix_yxt = compute_translate_and_rotate_xy(n, global_shift)
 
+    # 서측
+    # k = np.cross(n, np.array([0, 0, 1]))
+    # k = k / la.norm(k)
+    #
+    # l = np.cross(k, n)
+    # l = l / la.norm(l)
+
+    # 동측
     k = np.cross(n, np.array([0, 0, 1]))
-    k = k / la.norm(k)
+    k = - k / la.norm(k)
 
     l = np.cross(k, n)
-    l = l / la.norm(l)
+    l = - l / la.norm(l)
 
     rotation_matrix = np.array([k, l, n])
 
@@ -48,7 +56,7 @@ def compute_transformation(input_path, output_path, output_mat_path, global_shif
 
     with open(output_path, 'w') as f:
         for idx, row in enumerate(data_tranformed):
-            f.write('%d %f %f %f\n' % (idx, row[0], row[1], row[2]))
+            f.write('%d %f %f %f\n' % (idx + 1, row[0], row[1], row[2]))
 
     with open(output_mat_path, 'wb') as f:
         transformation_info = {
@@ -57,33 +65,44 @@ def compute_transformation(input_path, output_path, output_mat_path, global_shif
         }
         pickle.dump(transformation_info, f)
 
-    return data_tranformed
+    return data_tranformed, rotation_matrix
 
 
 if __name__ == '__main__':
+    # global_shift = {
+    #     'x': 199560.039,
+    #     'y': 552246.931,
+    #     'z': 56.700
+    # }
+    # data_transformed_west, rotation_matrix_west = compute_transformation(
+    #     'data/sewoon_west_excluded.txt',
+    #     'data/sewoon_west_excluded_transformed.txt',
+    #     'data/sewoon_west_excluded_transform_mat.pickle',
+    #     global_shift
+    # )
     global_shift = {
-        'x': 199560.039,
-        'y': 552246.931,
-        'z': 56.700
+        'x': 199598.891,
+        'y': 552145.686,
+        'z': 57.046
     }
-    data_transformed_west = compute_transformation(
-        'data/sewoon_west.txt',
-        'data/sewoon_west_transformed.txt',
-        'data/sewoon_west_transform_mat.pickle',
+    data_transformed_east, rotation_matrix_east = compute_transformation(
+        'data/sewoon_east_excluded.txt',
+        'data/sewoon_east_excluded_transformed.txt',
+        'data/sewoon_east_excluded_transform_mat.pickle',
         global_shift
     )
-    global_shift = {
-        'x': 199596.014,
-        'y': 552171.909,
-        'z': 56.518
-    }
-    data_transformed_east = compute_transformation(
-        'data/sewoon_east.txt',
-        'data/sewoon_east_transformed.txt',
-        'data/sewoon_east_transform_mat.pickle',
-        global_shift
-    )
+    # global_shift = {
+    #     'x': 199341.820626,
+    #     'y': 552199.462439,
+    #     'z': 72.206208
+    # }
+    # data_transformed_east, rotation_matrix_east = compute_transformation(
+    #     'data/donhwamun-ro_chunk_1.txt',
+    #     'data/donhwamun-ro_chunk_1_transformed.txt',
+    #     'data/donhwamun-ro_chunk_1_transform_mat.pickle',
+    #     global_shift
+    # )
 
-    plt.figure()
-    plt.boxplot((data_transformed_west.T[2], data_transformed_east.T[2]))
-    plt.show()
+    # plt.figure()
+    # plt.boxplot(data_transformed_east.T[2])
+    # plt.show()
